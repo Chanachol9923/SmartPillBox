@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .pizza-container { position: relative; width: 340px; height: 340px; border-radius: 50%; overflow: hidden; background: #f1f5f9; transform: rotate(45deg); border: 8px solid white; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); margin: auto; }
+        .pizza-slot { position: absolute; width: 50%; height: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; transition: all 0.3s; cursor: pointer; }
+        .pizza-slot.active { border: 4px solid #3b82f6; z-index: 20; box-shadow: inset 0 0 20px rgba(59,130,246,0.1); }
+        .pizza-slot.off { background: #cbd5e1 !important; opacity: 0.6; }
+        .pizza-label { transform: rotate(-45deg); font-weight: 900; font-size: 11px; text-transform: uppercase; color: #1e293b; text-align: center; }
+        .slot-1 { top: 0; left: 0; background: #fee2e2; } .slot-2 { top: 0; right: 0; background: #fef3c7; }
+        .slot-3 { bottom: 0; right: 0; background: #dcfce7; } .slot-4 { bottom: 0; left: 0; background: #e0e7ff; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-4 space-y-6">
+            <div id="envStatus" class="p-6 rounded-[2rem] shadow-lg flex justify-between items-center bg-white transition-all duration-500 border-2 border-transparent">
+                <div>
+                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Environment Status</h4>
+                    <div id="envMsg" class="text-[10px] font-bold mt-1 text-slate-500 italic">Syncing...</div>
+                </div>
+                <div class="text-right font-black italic text-xl">
+                    <span id="tempVal">--</span><span class="text-[9px] mr-2">°C</span>
+                    <span id="humiVal">--</span><span class="text-[9px]">%RH</span>
+                </div>
+            </div>
+
+            <div class="pizza-container">
+                <div id="p-slot-1" onclick="selectSlot(1)" class="pizza-slot slot-1"><span id="txt-slot-1" class="pizza-label">S1</span></div>
+                <div id="p-slot-2" onclick="selectSlot(2)" class="pizza-slot slot-2"><span id="txt-slot-2" class="pizza-label">S2</span></div>
+                <div id="p-slot-3" onclick="selectSlot(3)" class="pizza-slot slot-3"><span id="txt-slot-3" class="pizza-label">S3</span></div>
+                <div id="p-slot-4" onclick="selectSlot(4)" class="pizza-slot slot-4"><span id="txt-slot-4" class="pizza-label">S4</span></div>
+            </div>
+
+            <div id="editForm" class="bg-white p-7 rounded-[2.5rem] shadow-xl hidden border border-white">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xs font-black uppercase italic text-slate-400 tracking-widest">Slot Settings</h2>
+                    <input type="checkbox" id="statusToggle" class="w-5 h-5 cursor-pointer" onchange="applyToggle()">
+                </div>
+                <div class="space-y-4 text-center">
+                    <input type="text" id="labelInput" placeholder="Med Name" class="w-full bg-slate-50 p-4 rounded-2xl font-bold outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-blue-500">
+                    <div class="flex gap-2">
+                        <select id="hourInput" class="flex-1 bg-slate-50 p-4 rounded-2xl font-black text-center outline-none"></select>
+                        <select id="minInput" class="flex-1 bg-slate-50 p-4 rounded-2xl font-black text-center outline-none"></select>
+                    </div>
+                    <button onclick="saveChanges()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black shadow-lg uppercase text-[10px] hover:bg-blue-700 transition tracking-widest">Save Schedule</button>
+                    <button id="refillBtn" onclick="refillSlot()" class="bg-amber-500 text-white px-8 py-3 rounded-full font-black text-[10px] uppercase shadow-lg hover:bg-amber-600 transition">Open Slot</button>
+                    <div id="actionStatus" class="text-[9px] font-black uppercase text-center text-slate-400 opacity-0 transition-opacity">Status: Updated</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 space-y-6">
+            <div class="bg-white p-8 rounded-[3.5rem] shadow-xl border border-white">
+                <canvas id="medChart" height="180"></canvas>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-7 rounded-[2.5rem] shadow-lg border border-slate-50">
+                    <h3 id="historyTitle" class="text-[10px] font-black uppercase mb-4 text-slate-400 text-center tracking-widest italic">Adherence Records</h3>
+                    <div id="trackerList" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-2"></div>
+                </div>
+                <div class="bg-white p-7 rounded-[2.5rem] shadow-lg flex flex-col h-[400px] border border-slate-50">
+                    <h3 class="text-[10px] font-black uppercase text-blue-500 mb-4 italic tracking-widest"><i class="fa-solid fa-robot mr-1"></i> PillBox AI Assistant</h3>
+                    <div id="chatBox" class="flex-1 text-[11px] overflow-y-auto space-y-3 mb-4 custom-scrollbar pr-2 text-slate-600 italic leading-relaxed"></div>
+                    <div class="relative flex items-center gap-2">
+                        <input type="text" id="userQuery" onkeypress="if(event.key==='Enter') sendMessage()" placeholder="Ask PillBox about your meds..." class="flex-1 bg-slate-50 p-3 rounded-xl text-[11px] outline-none border border-slate-100 focus:ring-2 focus:ring-blue-400">
+                        <button onclick="sendMessage()" id="sendBtn" class="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlot = null; let allConfig = []; let myChart = null;
+
+        function init() {
+            const h = document.getElementById('hourInput'); const m = document.getElementById('minInput');
+            for(let i=0;i<24;i++) h.options.add(new Option(i.toString().padStart(2,'0'), i.toString().padStart(2,'0')));
+            for(let i=0;i<60;i++) m.options.add(new Option(i.toString().padStart(2,'0'), i.toString().padStart(2,'0')));
+            loadData(); setInterval(updateEnvUI, 5000); setInterval(loadData, 15000);
+            document.getElementById('chatBox').innerHTML = "<div class='bg-slate-100 p-3 rounded-2xl rounded-tl-none text-slate-600'>สวัสดีครับ! ผม PillBox ยินดีที่ได้ช่วยดูแลเรื่องยาครับ มีอะไรอยากปรึกษาถามมาได้เลยนะครับ</div>";
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('userQuery'); const msg = input.value.trim(); if (!msg) return;
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += `<div class="text-right mb-2"><span class="bg-blue-600 text-white p-2 px-3 rounded-2xl rounded-tr-none inline-block not-italic shadow-sm">${msg}</span></div>`;
+            input.value = ""; chatBox.scrollTop = chatBox.scrollHeight;
+            
+            const loadingId = "load-" + Date.now();
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start mb-2"><div class="bg-slate-50 text-blue-400 p-3 rounded-2xl rounded-tl-none text-[10px] animate-pulse">PillBox is thinking...</div></div>`;
+
+            google.script.run.withSuccessHandler(res => {
+                document.getElementById(loadingId).remove();
+                chatBox.innerHTML += `<div class="text-left bg-slate-100 p-3 rounded-2xl rounded-tl-none text-slate-700 not-italic mb-2 shadow-sm border border-white"><b>PillBox:</b> ${res}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }).chatWithPillBox(msg);
+        }
+
+        function updateEnvUI() {
+            google.script.run.withSuccessHandler(data => {
+                document.getElementById('tempVal').innerText = data.temp.toFixed(1);
+                document.getElementById('humiVal').innerText = data.humi.toFixed(1);
+                const card = document.getElementById('envStatus'); const msg = document.getElementById('envMsg');
+                if (data.humi > 65 || data.temp > 30) {
+                    card.style.backgroundColor = "#fee2e2"; card.style.borderColor = "#fecaca";
+                    msg.innerText = "⚠️ ที่นี่ความชื้น/อุณหภูมิสูงเกินไป";
+                } else {
+                    card.style.backgroundColor = "#f0fdf4"; card.style.borderColor = "#bbf7d0";
+                    msg.innerText = "✅ สภาพแวดล้อมจัดเก็บเหมาะสม";
+                }
+            }).getLatestEnv();
+        }
+
+        function loadData() {
+            google.script.run.withSuccessHandler(data => {
+                allConfig = data;
+                data.forEach(row => {
+                    document.getElementById('txt-slot-'+row[0]).innerText = row[1] || "S"+row[0];
+                    const el = document.getElementById('p-slot-'+row[0]);
+                    if(row[3]==="OFF") el.classList.add('off'); else el.classList.remove('off');
+                });
+            }).getConfig();
+            google.script.run.withSuccessHandler(stats => { 
+                renderChart(stats, currentSlot); 
+                renderTracker(stats, currentSlot); 
+            }).getAnalyticsData();
+        }
+
+        function renderChart(stats, filterSlot) {
+            const labels = Object.keys(stats);
+            const takenData = labels.map(day => filterSlot ? stats[day].details.filter(d => d.slot == filterSlot && d.status === 'Taken').length : stats[day].taken);
+            const skippedData = labels.map(day => filterSlot ? stats[day].details.filter(d => d.slot == filterSlot && d.status === 'Skip').length : stats[day].skipped);
+
+            if(myChart) myChart.destroy();
+            const ctx = document.getElementById('medChart').getContext('2d');
+            myChart = new Chart(ctx, { 
+                type: 'bar', 
+                data: { 
+                    labels: labels, 
+                    datasets: [
+                        { label: 'Taken', data: takenData, backgroundColor: '#3b82f6', borderRadius: 6 },
+                        { label: 'Skipped', data: skippedData, backgroundColor: '#f87171', borderRadius: 6 }
+                    ] 
+                },
+                options: { 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10, weight: '900' } } } }, 
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
+                }
+            });
+        }
+
+        function renderTracker(stats, filterSlot) {
+            const list = document.getElementById('trackerList'); list.innerHTML = "";
+            document.getElementById('historyTitle').innerText = filterSlot ? `Records (Slot ${filterSlot})` : "Global Records";
+            Object.keys(stats).reverse().forEach(day => {
+                stats[day].details.slice().reverse().forEach(item => {
+                    if (!filterSlot || item.slot == filterSlot) {
+                        list.innerHTML += `<div class="flex justify-between p-3 bg-white border border-slate-100 rounded-2xl mb-1 text-[10px]">
+                            <div><b>${item.med}</b><br><span class="text-slate-400 text-[9px]">${day} • ${item.time}</span></div>
+                            <span class="font-black ${item.status==='Taken'?'text-green-500':'text-red-400'}">${item.status.toUpperCase()}</span>
+                        </div>`;
+                    }
+                });
+            });
+        }
+
+        function selectSlot(s) {
+            currentSlot = s; document.querySelectorAll('.pizza-slot').forEach(el => el.classList.remove('active'));
+            document.getElementById('p-slot-'+s).classList.add('active');
+            const d = allConfig.find(r => r[0] == s);
+            document.getElementById('editForm').classList.remove('hidden');
+            document.getElementById('labelInput').value = d[1];
+            document.getElementById('refillBtn').innerText = `Open "${d[1] || 'Slot '+s}"`;
+            const t = (d[2] || "00:00").split(':');
+            document.getElementById('hourInput').value = t[0]; document.getElementById('minInput').value = t[1];
+            document.getElementById('statusToggle').checked = (d[3] === "ON");
+            loadData();
+        }
+
+        // --- ฟังก์ชันบันทึกตั้งค่าเดิม [cite: 57, 58] ---
+function saveChanges() {
+    const l = document.getElementById('labelInput').value;
+    const h = document.getElementById('hourInput').value;
+    const m = document.getElementById('minInput').value;
+    const t = h + ":" + m; // เวลาที่ผู้ใช้เลือกใหม่
+    const s = document.getElementById('statusToggle').checked ? "ON" : "OFF";
+    const st = document.getElementById('actionStatus');
+    
+    // --- 🚨 ส่วนที่เพิ่ม: ดักจับเวลาซ้ำในฝั่ง UI ---
+    // เช็คใน allConfig ว่ามี Slot อื่น (ที่ไม่ใช่ currentSlot) ใช้เวลานี้ไปหรือยัง
+    const isDuplicate = allConfig.some(row => {
+        const slotNum = row[0];
+        const slotTime = row[2];
+        const isOtherSlot = String(slotNum) !== String(currentSlot);
+        return isOtherSlot && slotTime === t;
+    });
+
+    if (isDuplicate) {
+        st.innerText = "⚠️ เวลานี้ถูกใช้ใน Slot อื่นแล้ว กรุณาเปลี่ยนใหม่";
+        st.style.color = "#ef4444"; // สีแดง
+        st.style.opacity = "1";
+        return; // หยุดการทำงาน ไม่ส่งไปที่ Server
+    }
+    // ------------------------------------------
+
+    st.innerText = "กำลังบันทึก...";
+    st.style.color = "#94a3b8"; // สีปกติ
+    st.style.opacity = "1";
+
+    google.script.run.withSuccessHandler((res) => { 
+        if (res.startsWith("ERROR")) {
+            st.innerText = res;
+            st.style.color = "#ef4444";
+        } else {
+            loadData(); 
+            st.innerText = "บันทึกเรียบร้อย!";
+            st.style.color = "#10b981"; // สีเขียว
+            setTimeout(() => st.style.opacity = "0", 3000);
+        }
+    }).updateSettings(currentSlot.toString(), l, t, s);
+}
+
+        // --- ฟังก์ชันเปิดฝาเติมยาเดิม [cite: 60, 64, 68] ---
+        function refillSlot() {
+            const btn = document.getElementById('refillBtn');
+            const status = document.getElementById('actionStatus');
+            const d = allConfig.find(r => r[0] == currentSlot);
+            const medName = d ? (d[1] || 'Slot ' + currentSlot) : 'Slot ' + currentSlot;
+
+            btn.disabled = true;
+            btn.innerText = `Opening "${medName}" ....`;
+            status.innerText = "Sending command...";
+            status.style.opacity = "1";
+
+            google.script.run.withSuccessHandler(() => {
+                let timeLeft = 10;
+                const timer = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft > 0) {
+                        let dots = ".".repeat(timeLeft % 4 + 1); 
+                        btn.innerText = `Opening "${medName}" ${timeLeft}s ${dots}`;
+                    } else {
+                        clearInterval(timer);
+                        btn.innerText = "SUCCESS: OPENED";
+                        btn.style.backgroundColor = "#10b981";
+                        // ✅ แสดงข้อความแจ้งเตือนเฉพาะตอนเปิด Refill [cite: 68]
+                        status.innerText = "กรุณากดปุ่มที่ตัวเครื่องเพื่อปิดฝา";
+                        
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.style.backgroundColor = "";
+                            btn.innerText = `Open "${medName}"`;
+                            status.style.opacity = "0";
+                        }, 5000);
+                    }
+                }, 1000);
+            }).requestRefill(currentSlot);
+        }
+        function applyToggle() { saveChanges(); }
+        window.onload = init;
+    </script>
+</body>
+</html>
