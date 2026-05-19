@@ -1,5 +1,5 @@
-const GEMINI_API_KEY = "AIzaSyDq0BwTcAGHPXWW0qIVDQ_-T2LpcoQ4zrs";
-const SPREADSHEET_ID = "1Hk2x_2eMRWX6Yl5-4SSxUU6ifiBnqwLmuBFP6uYd1Ig";
+const GEMINI_API_KEY = "Your_Key";
+const SPREADSHEET_ID = "Your_SheetID";
 
 // --- ฟังก์ชันเช็คคำสั่งจาก ESP32 (Polling) ---
 // --- แก้ไขฟังก์ชัน doGet เดิม [cite: 74, 76, 81] ---
