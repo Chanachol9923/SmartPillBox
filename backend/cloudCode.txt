@@ -72,7 +72,7 @@
                     <h3 class="text-[10px] font-black uppercase text-blue-500 mb-4 italic tracking-widest"><i class="fa-solid fa-robot mr-1"></i> PillBox AI Assistant</h3>
                     <div id="chatBox" class="flex-1 text-[11px] overflow-y-auto space-y-3 mb-4 custom-scrollbar pr-2 text-slate-600 italic leading-relaxed"></div>
                     <div class="relative flex items-center gap-2">
-                        <input type="text" id="userQuery" onkeypress="if(event.key==='Enter') sendMessage()" placeholder="Ask PillBox about your meds..." class="flex-1 bg-slate-50 p-3 rounded-xl text-[11px] outline-none border border-slate-100 focus:ring-2 focus:ring-blue-400">
+                        <input type="text" id="userQuery" onpress="if(event.==='Enter') sendMessage()" placeholder="Ask PillBox about your meds..." class="flex-1 bg-slate-50 p-3 rounded-xl text-[11px] outline-none border border-slate-100 focus:ring-2 focus:ring-blue-400">
                         <button onclick="sendMessage()" id="sendBtn" class="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition"><i class="fa-solid fa-paper-plane"></i></button>
                     </div>
                 </div>
@@ -138,7 +138,7 @@
         }
 
         function renderChart(stats, filterSlot) {
-            const labels = Object.keys(stats);
+            const labels = Object.s(stats);
             const takenData = labels.map(day => filterSlot ? stats[day].details.filter(d => d.slot == filterSlot && d.status === 'Taken').length : stats[day].taken);
             const skippedData = labels.map(day => filterSlot ? stats[day].details.filter(d => d.slot == filterSlot && d.status === 'Skip').length : stats[day].skipped);
 
@@ -164,7 +164,7 @@
         function renderTracker(stats, filterSlot) {
             const list = document.getElementById('trackerList'); list.innerHTML = "";
             document.getElementById('historyTitle').innerText = filterSlot ? `Records (Slot ${filterSlot})` : "Global Records";
-            Object.keys(stats).reverse().forEach(day => {
+            Object.s(stats).reverse().forEach(day => {
                 stats[day].details.slice().reverse().forEach(item => {
                     if (!filterSlot || item.slot == filterSlot) {
                         list.innerHTML += `<div class="flex justify-between p-3 bg-white border border-slate-100 rounded-2xl mb-1 text-[10px]">
@@ -252,8 +252,8 @@
 
 
 
-const GEMINI_API_KEY = "AIzaSyDq0BwTcAGHPXWW0qIVDQ_-T2LpcoQ4zrs";
-const SPREADSHEET_ID = "1Hk2x_2eMRWX6Yl5-4SSxUU6ifiBnqwLmuBFP6uYd1Ig";
+const GEMINI_API_KEY = "Your_Key";
+const SPREADSHEET_ID = "Your_ID";
 
 function doGet(e) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -320,7 +320,7 @@ function doGet(e) {
 
 function chatWithPillBox(userMessage) {
   // 1. ประกาศตัวแปร apiKey ก่อน (ใช้ Key ของคุณ)
-  const apiKey = "AIzaSyDq0BwTcAGHPXWW0qIVDQ_-T2LpcoQ4zrs"; 
+  const apiKey = "Your_Key"; 
   
   // 2. ใช้รูปแบบ apiUrl ตามรูปที่ส่งมา (ปรับเป็นรุ่น 1.5-flash เพื่อความเสถียร)
   // ใช้ gemini-pro ซึ่งเป็นรุ่นมาตรฐานที่สุดสำหรับ v1beta
@@ -369,8 +369,8 @@ function chatWithPillBox(userMessage) {
   }
 }
 // ฟังก์ชันสำรองกรณีโมเดล Flash มีปัญหา
-function tryGeminiProBackup(prompt, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+function tryGeminiProBackup(prompt, api) {
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?=${api}`;
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
   const response = UrlFetchApp.fetch(url, {
     method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true
